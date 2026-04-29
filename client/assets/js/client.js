@@ -1,0 +1,708 @@
+const sidebar = document.querySelector("[data-sidebar]");
+const sidebarButton = document.querySelector("[data-sidebar-button]");
+const sidebarClose = document.querySelector("[data-sidebar-close]");
+const reservationModal = document.getElementById("reservationModal");
+const reservationDetailsTitle = document.getElementById("reservationDetailsTitle");
+const modalDetails = document.getElementById("modalDetails");
+
+let activeModal = null;
+let previousFocus = null;
+let calendarLoaded = false;
+let reservationsLoaded = false;
+let calendarState = {
+    events: [],
+    displayDate: new Date(),
+    selectedDate: formatDate(new Date()),
+};
+
+if (sidebar && sidebarButton) {
+    sidebarButton.addEventListener("click", () => sidebar.classList.remove("hidden"));
+}
+
+if (sidebar && sidebarClose) {
+    sidebarClose.addEventListener("click", () => sidebar.classList.add("hidden"));
+}
+
+document.addEventListener("click", handleDocumentClick);
+document.addEventListener("submit", handleFormSubmit);
+document.addEventListener("keydown", handleKeyboard);
+
+initPackageBudgetForms(document);
+
+async function handleDocumentClick(event) {
+    const openButton = event.target.closest("[data-dashboard-modal-open]");
+    if (openButton) {
+        openModal(openButton.dataset.dashboardModalOpen);
+        sidebar?.classList.add("hidden");
+        return;
+    }
+
+    const switchButton = event.target.closest("[data-dashboard-modal-switch]");
+    if (switchButton) {
+        closeModal(null, true);
+        openModal(switchButton.dataset.dashboardModalSwitch);
+        return;
+    }
+
+    const closeButton = event.target.closest("[data-dashboard-modal-close]");
+    if (closeButton) {
+        closeModal(closeButton.closest("[data-dashboard-modal]"));
+        return;
+    }
+
+    const modalOverlay = event.target.closest("[data-dashboard-modal]");
+    if (modalOverlay && event.target === modalOverlay) {
+        closeModal(modalOverlay);
+        return;
+    }
+
+    const detailClose = event.target.closest("[data-reservation-close]");
+    if (detailClose) {
+        closeReservationDetails();
+        return;
+    }
+
+    if (reservationModal && event.target === reservationModal) {
+        closeReservationDetails();
+        return;
+    }
+
+    const reservationTab = event.target.closest("[data-reservation-tab]");
+    if (reservationTab) {
+        switchReservationTab(reservationTab);
+        return;
+    }
+
+    const reservationView = event.target.closest("[data-reservation-view]");
+    if (reservationView) {
+        openReservationDetails(reservationView);
+        return;
+    }
+
+    const calendarPrev = event.target.closest("[data-calendar-prev]");
+    if (calendarPrev) {
+        calendarState.displayDate.setMonth(calendarState.displayDate.getMonth() - 1);
+        renderCalendar();
+        return;
+    }
+
+    const calendarNext = event.target.closest("[data-calendar-next]");
+    if (calendarNext) {
+        calendarState.displayDate.setMonth(calendarState.displayDate.getMonth() + 1);
+        renderCalendar();
+        return;
+    }
+
+    const calendarToday = event.target.closest("[data-calendar-today]");
+    if (calendarToday) {
+        calendarState.displayDate = new Date();
+        calendarState.selectedDate = formatDate(new Date());
+        renderCalendar();
+        return;
+    }
+
+    const calendarDay = event.target.closest("[data-calendar-date]");
+    if (calendarDay) {
+        calendarState.selectedDate = calendarDay.dataset.calendarDate;
+        renderCalendar();
+        return;
+    }
+
+    const pricingChoice = event.target.closest("[data-pricing-choice]");
+    if (pricingChoice) {
+        chooseEventPackage(pricingChoice.dataset.pricingChoice);
+    }
+}
+
+async function handleFormSubmit(event) {
+    const form = event.target;
+
+    if (form.matches("[data-confirm-form]")) {
+        event.preventDefault();
+        await submitConfirmedForm(form);
+        return;
+    }
+
+    if (form.matches("[data-loading-form]") && form.action.includes("reservation.php")) {
+        event.preventDefault();
+        await submitReservationForm(form);
+        return;
+    }
+
+    if (form.matches("[data-loading-form]")) {
+        setFormLoading(form);
+    }
+}
+
+function handleKeyboard(event) {
+    const topModal = getTopOpenModal();
+
+    if (event.key === "Escape") {
+        if (reservationModal && !reservationModal.classList.contains("hidden")) {
+            closeReservationDetails();
+            return;
+        }
+
+        closeModal();
+        return;
+    }
+
+    if (event.key === "Tab" && topModal) {
+        trapFocus(event, topModal);
+    }
+}
+
+async function openModal(modalId) {
+    const modal = document.querySelector(`[data-dashboard-modal="${modalId}"]`);
+    if (!modal) {
+        return;
+    }
+
+    closeModal(null, true);
+    previousFocus = document.activeElement;
+    activeModal = modal;
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+
+    requestAnimationFrame(() => {
+        modal.classList.add("is-open");
+        focusFirstElement(modal);
+    });
+
+    document.body.classList.add("modal-open");
+
+    if (modalId === "calendar") {
+        await loadCalendarData();
+    }
+
+    if (modalId === "reservations") {
+        await loadReservationsContent();
+    }
+}
+
+function openPricingModal() {
+    openModal("pricing");
+}
+
+async function chooseEventPackage(eventType) {
+    const packageName = `${eventType} Package`;
+
+    closeModal(document.querySelector('[data-dashboard-modal="pricing"]'), true);
+    await openModal("reservation");
+
+    const reservationModalElement = document.querySelector('[data-dashboard-modal="reservation"]');
+    const form = reservationModalElement?.querySelector("form");
+    const eventTypeSelect = form?.querySelector("[data-event-type-select]");
+    const packageSelect = form?.querySelector("[data-package-select]");
+    const budgetInput = form?.querySelector("[data-budget-input]");
+
+    if (eventTypeSelect) {
+        eventTypeSelect.value = eventType;
+    }
+
+    if (packageSelect) {
+        packageSelect.value = packageName;
+    }
+
+    if (eventTypeSelect || packageSelect) {
+        syncPackageBudget(packageSelect, budgetInput, eventTypeSelect);
+    }
+}
+
+function closeModal(target = null, immediate = false) {
+    const modals = target
+        ? [target]
+        : Array.from(document.querySelectorAll("[data-dashboard-modal]"));
+
+    modals.forEach((modal) => {
+        if (!modal || modal.classList.contains("hidden")) {
+            return;
+        }
+
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
+
+        const finishClose = () => {
+            modal.classList.add("hidden");
+            if (activeModal === modal) {
+                activeModal = null;
+            }
+            syncBodyScrollLock();
+        };
+
+        if (immediate) {
+            finishClose();
+        } else {
+            window.setTimeout(finishClose, 180);
+        }
+    });
+
+    if (!target && previousFocus instanceof HTMLElement) {
+        previousFocus.focus();
+        previousFocus = null;
+    }
+}
+
+async function loadCalendarData(force = false) {
+    if (calendarLoaded && !force) {
+        renderCalendar();
+        return;
+    }
+
+    const loading = document.querySelector("[data-calendar-loading]");
+    loading?.classList.remove("hidden");
+
+    try {
+        const html = await fetchText("calendar.php");
+        const match = html.match(/window\.eventifyCalendarEvents\s*=\s*(\[.*?\]);/s);
+        calendarState.events = match ? JSON.parse(match[1]) : [];
+        calendarLoaded = true;
+        renderCalendar();
+    } catch (error) {
+        showAlert("error", "Calendar unavailable", "Please try opening the calendar again.");
+    } finally {
+        loading?.classList.add("hidden");
+    }
+}
+
+async function loadReservationsContent(force = false) {
+    const content = document.querySelector("[data-reservations-content]");
+    const loading = document.querySelector("[data-reservations-loading]");
+
+    if (!content) {
+        return;
+    }
+
+    if (reservationsLoaded && !force) {
+        return;
+    }
+
+    loading?.classList.remove("hidden");
+    content.classList.add("opacity-50");
+
+    try {
+        const html = await fetchText("my_reservations.php");
+        const parsed = new DOMParser().parseFromString(html, "text/html");
+        const reservationBlock = parsed.querySelector("main > div.mt-8") || parsed.querySelector("main");
+
+        content.innerHTML = reservationBlock
+            ? reservationBlock.outerHTML
+            : `<div class="mt-6 rounded-[2rem] bg-indigo-50 p-8 text-center">
+                <h3 class="text-2xl font-semibold">No reservations yet</h3>
+                <p class="mt-2 text-slate-600">Your bookings will appear here after you submit a request.</p>
+            </div>`;
+
+        reservationsLoaded = true;
+        initPackageBudgetForms(content);
+    } catch (error) {
+        content.innerHTML = `<div class="mt-6 rounded-[2rem] bg-red-50 p-8 text-center text-red-700">
+            <h3 class="text-2xl font-semibold">Reservations unavailable</h3>
+            <p class="mt-2">Please try again in a moment.</p>
+        </div>`;
+    } finally {
+        loading?.classList.add("hidden");
+        content.classList.remove("opacity-50");
+    }
+}
+
+async function submitReservationForm(form) {
+    if (!form.reportValidity()) {
+        return;
+    }
+
+    setFormLoading(form);
+
+    try {
+        const response = await fetch(form.action, {
+            method: "POST",
+            body: new FormData(form),
+            headers: {"X-Requested-With": "XMLHttpRequest"},
+        });
+        const html = await response.text();
+
+        if (response.redirected && response.url.includes("dashboard.php")) {
+            form.reset();
+            initPackageBudgetForms(form);
+            showAlert("success", "Reservation submitted", "Waiting for admin approval.");
+            closeModal(document.querySelector('[data-dashboard-modal="reservation"]'));
+            reservationsLoaded = false;
+            await loadReservationsContent(true);
+            return;
+        }
+
+        const parsed = new DOMParser().parseFromString(html, "text/html");
+        const message = parsed.querySelector(".text-red-700")?.textContent?.trim()
+            || "Please check the form and try again.";
+        showAlert("error", "Reservation failed", message);
+    } catch (error) {
+        showAlert("error", "Reservation failed", "Please try again.");
+    } finally {
+        restoreFormLoading(form);
+    }
+}
+
+async function submitConfirmedForm(form) {
+    const message = form.dataset.confirmMessage || "Continue?";
+    const confirmed = await confirmAction(message);
+
+    if (!confirmed) {
+        return;
+    }
+
+    setFormLoading(form);
+
+    try {
+        const response = await fetch(form.action, {
+            method: "POST",
+            body: new FormData(form),
+            headers: {"X-Requested-With": "XMLHttpRequest"},
+        });
+
+        if (!response.ok) {
+            throw new Error("Request failed");
+        }
+
+        showAlert("success", "Reservation cancelled", "Your reservation was updated.");
+        reservationsLoaded = false;
+        await loadReservationsContent(true);
+    } catch (error) {
+        showAlert("error", "Action failed", "Please try again.");
+    } finally {
+        restoreFormLoading(form);
+    }
+}
+
+function renderCalendar() {
+    const calendarGrid = document.getElementById("calendarGrid");
+    const calendarMonth = document.getElementById("calendarMonth");
+    const selectedDateTitle = document.getElementById("selectedDateTitle");
+    const selectedDateEvents = document.getElementById("selectedDateEvents");
+
+    if (!calendarGrid || !calendarMonth || !selectedDateTitle || !selectedDateEvents) {
+        return;
+    }
+
+    const year = calendarState.displayDate.getFullYear();
+    const month = calendarState.displayDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const leadingDays = (firstDay.getDay() + 6) % 7;
+
+    calendarMonth.textContent = firstDay.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+    });
+
+    calendarGrid.innerHTML = "";
+
+    for (let i = 0; i < leadingDays; i++) {
+        calendarGrid.appendChild(makeEmptyDay());
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const bookedEvents = calendarState.events.filter((event) => event.event_date === date);
+        const isSelected = date === calendarState.selectedDate;
+        const button = document.createElement("button");
+
+        button.type = "button";
+        button.dataset.calendarDate = date;
+        button.className = [
+            "calendar-day rounded-3xl border p-3 text-left shadow-sm transition hover:-translate-y-0.5",
+            isSelected ? "border-primary bg-gradient-to-br from-primary to-secondary text-white shadow-soft" : "border-purple-100 bg-white text-dark",
+            bookedEvents.length ? "ring-1 ring-red-100" : "",
+        ].join(" ");
+        button.innerHTML = `
+            <span class="block text-xl font-semibold">${day}</span>
+            <span class="mt-5 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${isSelected ? "bg-white/20 text-white" : bookedEvents.length ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}">
+                ${bookedEvents.length ? "Full" : "Free"}
+            </span>
+        `;
+        calendarGrid.appendChild(button);
+    }
+
+    renderSelectedDate();
+}
+
+function renderSelectedDate() {
+    const selectedDateTitle = document.getElementById("selectedDateTitle");
+    const selectedDateEvents = document.getElementById("selectedDateEvents");
+
+    if (!selectedDateTitle || !selectedDateEvents) {
+        return;
+    }
+
+    const selected = new Date(calendarState.selectedDate + "T00:00:00");
+    const selectedEvents = calendarState.events.filter((event) => event.event_date === calendarState.selectedDate);
+
+    selectedDateTitle.textContent = selected.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+    });
+
+    if (!selectedEvents.length) {
+        selectedDateEvents.innerHTML = `
+            <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+                <p class="font-semibold text-emerald-700">Available</p>
+                <p class="mt-1 text-sm text-emerald-700">No approved event is scheduled on this date.</p>
+            </div>
+        `;
+        return;
+    }
+
+    selectedDateEvents.innerHTML = selectedEvents.map((event) => `
+        <article class="rounded-2xl border border-purple-100 bg-indigo-50 p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-primary">${escapeHtml(event.event_type || "Event")}</p>
+            <h3 class="mt-2 text-xl font-semibold">${escapeHtml(event.event_name || "Untitled Event")}</h3>
+            <p class="mt-2 text-sm text-slate-600">${escapeHtml(event.event_time || "")} | ${escapeHtml(event.venue || "Venue TBA")}</p>
+        </article>
+    `).join("");
+}
+
+function switchReservationTab(button) {
+    const container = button.closest("[data-reservations-content]") || document;
+    const group = button.dataset.reservationTab;
+
+    container.querySelectorAll("[data-reservation-tab]").forEach((tab) => {
+        const isActive = tab === button;
+        tab.classList.toggle("bg-white", isActive);
+        tab.classList.toggle("text-primary", isActive);
+        tab.classList.toggle("shadow-sm", isActive);
+        tab.classList.toggle("text-slate-500", !isActive);
+    });
+
+    container.querySelectorAll("[data-reservation-group]").forEach((card) => {
+        card.classList.toggle("hidden", card.dataset.reservationGroup !== group);
+    });
+
+    container.querySelectorAll("[data-reservation-empty]").forEach((emptyState) => {
+        emptyState.classList.toggle("hidden", emptyState.dataset.reservationEmpty !== group);
+    });
+}
+
+function openReservationDetails(button) {
+    if (!reservationModal || !reservationDetailsTitle || !modalDetails) {
+        return;
+    }
+
+    previousFocus = document.activeElement;
+    reservationDetailsTitle.textContent = button.dataset.title || "Reservation";
+    const details = [
+        ["Type", button.dataset.type],
+        ["Date", button.dataset.date],
+        ["Time", button.dataset.time],
+        ["Venue", button.dataset.venue],
+        ["Guests", button.dataset.guests],
+        ["Client", button.dataset.client],
+        ["Contact", button.dataset.contact],
+        ["Package", button.dataset.package],
+        ["Budget", button.dataset.budget],
+        ["Services", button.dataset.services],
+    ];
+
+    modalDetails.innerHTML = details.map(([label, value]) => `
+        <div class="rounded-2xl bg-indigo-50 p-4">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">${label}</p>
+            <p class="mt-1 font-bold">${escapeHtml(value || "Not specified")}</p>
+        </div>
+    `).join("");
+
+    reservationModal.classList.remove("hidden");
+    reservationModal.setAttribute("aria-hidden", "false");
+    requestAnimationFrame(() => {
+        reservationModal.classList.add("is-open");
+        focusFirstElement(reservationModal);
+    });
+    document.body.classList.add("modal-open");
+}
+
+function closeReservationDetails() {
+    if (!reservationModal || reservationModal.classList.contains("hidden")) {
+        return;
+    }
+
+    reservationModal.classList.remove("is-open");
+    reservationModal.setAttribute("aria-hidden", "true");
+
+    window.setTimeout(() => {
+        reservationModal.classList.add("hidden");
+        syncBodyScrollLock();
+        if (previousFocus instanceof HTMLElement) {
+            previousFocus.focus();
+            previousFocus = null;
+        }
+    }, 180);
+}
+
+function initPackageBudgetForms(root) {
+    root.querySelectorAll("[data-package-budget-form]").forEach((form) => {
+        const packageSelect = form.querySelector("[data-package-select]");
+        const eventTypeSelect = form.querySelector("[data-event-type-select]");
+        const budgetInput = form.querySelector("[data-budget-input]");
+
+        if (!budgetInput) {
+            return;
+        }
+
+        if (packageSelect && !packageSelect.dataset.budgetBound) {
+            packageSelect.addEventListener("change", () => syncPackageBudget(packageSelect, budgetInput, eventTypeSelect));
+            packageSelect.dataset.budgetBound = "true";
+        }
+
+        if (eventTypeSelect && !eventTypeSelect.dataset.budgetBound) {
+            eventTypeSelect.addEventListener("change", () => syncPackageBudget(packageSelect, budgetInput, eventTypeSelect));
+            eventTypeSelect.dataset.budgetBound = "true";
+        }
+
+        syncPackageBudget(packageSelect, budgetInput, eventTypeSelect);
+    });
+}
+
+function syncPackageBudget(packageSelect, budgetInput, eventTypeSelect = null) {
+    const prices = window.eventifyPackagePrices || {
+        Basic: 15000,
+        Standard: 30000,
+        Premium: 50000,
+        "Birthday Package": 15000,
+        "Wedding Package": 50000,
+    };
+    const eventPrices = window.eventifyEventTypePrices || {
+        Wedding: 50000,
+        Birthday: 15000,
+    };
+    const eventPrice = eventTypeSelect ? eventPrices[eventTypeSelect.value] : null;
+    const packagePrice = packageSelect ? prices[packageSelect.value] : null;
+    const price = eventPrice || packagePrice;
+
+    if (budgetInput) {
+        budgetInput.value = price ? Number(price).toFixed(2) : "";
+    }
+}
+
+function setFormLoading(form) {
+    form.querySelectorAll("button[type='submit']").forEach((button) => {
+        button.disabled = true;
+        button.dataset.originalText = button.dataset.originalText || button.textContent;
+        button.textContent = "Please wait...";
+        button.classList.add("opacity-70", "cursor-not-allowed");
+    });
+}
+
+function restoreFormLoading(form) {
+    form.querySelectorAll("button[type='submit']").forEach((button) => {
+        button.disabled = false;
+        button.textContent = button.dataset.originalText || button.textContent;
+        button.classList.remove("opacity-70", "cursor-not-allowed");
+    });
+}
+
+function syncBodyScrollLock() {
+    const hasOpenModal = Array.from(document.querySelectorAll(".dashboard-modal"))
+        .some((modal) => !modal.classList.contains("hidden"));
+
+    document.body.classList.toggle("modal-open", hasOpenModal);
+}
+
+function getTopOpenModal() {
+    if (reservationModal && !reservationModal.classList.contains("hidden")) {
+        return reservationModal;
+    }
+
+    return activeModal && !activeModal.classList.contains("hidden") ? activeModal : null;
+}
+
+function focusFirstElement(modal) {
+    const focusable = getFocusableElements(modal);
+    (focusable[0] || modal).focus();
+}
+
+function trapFocus(event, modal) {
+    const focusable = getFocusableElements(modal);
+
+    if (!focusable.length) {
+        event.preventDefault();
+        modal.focus();
+        return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+function getFocusableElements(root) {
+    return Array.from(root.querySelectorAll([
+        "a[href]",
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "[tabindex]:not([tabindex='-1'])",
+    ].join(","))).filter((element) => element.offsetParent !== null);
+}
+
+async function confirmAction(title) {
+    if (!window.Swal) {
+        return window.confirm(title);
+    }
+
+    const result = await Swal.fire({
+        title,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#7C00D8",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Yes",
+        cancelButtonText: "No",
+    });
+
+    return result.isConfirmed;
+}
+
+function showAlert(icon, title, text = "") {
+    if (!window.Swal) {
+        window.alert(text ? `${title}\n${text}` : title);
+        return;
+    }
+
+    Swal.fire({icon, title, text});
+}
+
+async function fetchText(url) {
+    const response = await fetch(url, {
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+    });
+
+    if (!response.ok) {
+        throw new Error("Request failed");
+    }
+
+    return response.text();
+}
+
+function makeEmptyDay() {
+    const element = document.createElement("div");
+    element.className = "calendar-day rounded-3xl bg-white/40";
+    return element;
+}
+
+function formatDate(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}

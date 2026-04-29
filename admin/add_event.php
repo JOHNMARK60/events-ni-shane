@@ -1,181 +1,194 @@
 <?php
 session_start();
-include '../db.php';
+include '../config/db.php';
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../login.php");
-    exit();
+$errors = [];
+
+eventify_require_role('admin');
+
+if($_SERVER['REQUEST_METHOD'] === 'POST'){
+
+    if(!eventify_verify_csrf()) {
+        $errors[] = "Security check failed. Please try again.";
+    } else {
+        $payload = eventify_reservation_payload_from_post();
+        $errors = eventify_validate_reservation_data($payload);
+    }
+
+    if(!empty($errors)) {
+        eventify_set_flash('error', 'Event was not saved', $errors[0]);
+    } else {
+        $budget = $payload['calculated_budget'];
+
+        $stmt = $conn->prepare("INSERT INTO events
+        (event_name, event_type, event_date, event_time, venue, guests, client_name, client_contact, package_type, budget, services)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        $stmt->bind_param("sssssisssds",
+            $payload['event_name'],
+            $payload['event_type'],
+            $payload['event_date'],
+            $payload['event_time'],
+            $payload['venue'],
+            $payload['guests'],
+            $payload['client_name'],
+            $payload['client_contact'],
+            $payload['package_type'],
+            $budget,
+            $payload['services']
+        );
+
+        if($stmt->execute()){
+            eventify_set_flash('success', 'Event added', 'The event was saved successfully.');
+            header("Location: add_event.php");
+            exit();
+        }
+    }
 }
-
-if(isset($_POST['save_event'])){
-
-    $event_name = $_POST['event_name'];
-    $event_type = $_POST['event_type'];
-    $event_date = $_POST['event_date'];
-    $event_time = $_POST['event_time'];
-    $venue = $_POST['venue'];
-    $guests = $_POST['guests'];
-    $client_name = $_POST['client_name'];
-    $client_contact = $_POST['client_contact'];
-    $package_type = $_POST['package_type'];
-    $budget = $_POST['budget'];
-
-    $services = isset($_POST['services']) ? implode(",", $_POST['services']) : "";
-
-    $stmt = $conn->prepare("INSERT INTO events 
-    (event_name, event_type, event_date, event_time, venue, guests, client_name, client_contact, package_type, budget, services) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-    $stmt->bind_param("sssssisssds",
-        $event_name,
-        $event_type,
-        $event_date,
-        $event_time,
-        $venue,
-        $guests,
-        $client_name,
-        $client_contact,
-        $package_type,
-        $budget,
-        $services
-    );
-
-   if($stmt->execute()){
-    echo "<script>
-    alert('Event Added Successfully');
-    window.location.href = 'add_event.php';
-    </script>";
-} else {
-    echo "Error: " . $stmt->error;
-}
-
-} 
-
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Add Event</title>
-    <link rel="stylesheet" href="admin.css?v=1">
-    <link rel="stylesheet" href="add.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Event | Eventify Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <?php echo eventify_sweetalert_assets(); ?>
+    <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#7C00D8',
+            secondary: '#A855F7',
+            soft: '#F6F3FF',
+            dark: '#111827'
+          },
+          boxShadow: {
+            soft: '0 15px 35px rgba(124, 0, 216, 0.15)'
+          }
+        }
+      }
+    }
+    </script>
+    <link rel="stylesheet" href="assets/css/admin.css">
 </head>
+<body class="bg-soft text-dark">
+    <div class="min-h-screen lg:flex">
+        <aside class="hidden w-72 shrink-0 flex-col border-r border-purple-100 bg-dark p-6 text-white lg:flex">
+            <a href="dashboard.php" class="flex items-center gap-3 text-2xl font-semibold">
+                <span class="grid h-10 w-10 place-items-center rounded-2xl bg-primary">E</span>
+                Eventify Admin
+            </a>
+            <nav class="mt-10 grid gap-2">
+                <a href="dashboard.php" class="rounded-2xl px-4 py-3 font-bold text-white/70 hover:bg-white/10 hover:text-white">Dashboard</a>
+                <a href="reservations.php" class="rounded-2xl px-4 py-3 font-bold text-white/70 hover:bg-white/10 hover:text-white">Reservations</a>
+                <a href="users.php" class="rounded-2xl px-4 py-3 font-bold text-white/70 hover:bg-white/10 hover:text-white">Users</a>
+                <a href="calendar.php" class="rounded-2xl px-4 py-3 font-bold text-white/70 hover:bg-white/10 hover:text-white">Calendar</a>
+                <a href="add_event.php" class="rounded-2xl bg-white/10 px-4 py-3 font-bold text-white">Add Event</a>
+            </nav>
+            <a href="../auth/logout.php" class="mt-auto rounded-2xl border border-white/10 px-4 py-3 text-center font-bold text-white/75 hover:bg-white/10">Logout</a>
+        </aside>
 
-<body>
+        <main class="flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+            <div class="mx-auto max-w-5xl">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">Admin Scheduler</p>
+                        <h1 class="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Add Event</h1>
+                    </div>
+                    <a href="calendar.php" class="rounded-2xl border border-purple-100 bg-white px-5 py-3 font-semibold text-primary hover:bg-purple-50">View Calendar</a>
+                </div>
 
-<div class="container">
+                <?php if(!empty($errors)): ?>
+                    <div class="mt-8 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                        <?php echo htmlspecialchars($errors[0]); ?>
+                    </div>
+                <?php endif; ?>
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
-    <div>
-        <h2 class="logo">Event Admin</h2>
-        <nav>
-            <a href="dashboard.php">Dashboard</a>
-            <a href="add_event.php" class="active">Add Event</a>
-            <a href="upcoming.php">Upcoming Events</a>
-            <a href="pending.php">Pending Requests</a>
-            <a href="complete_event.php">Completed Events</a>
-            <a href="history.php">Event History</a>
-        </nav>
+                <form method="POST" class="mt-8 rounded-[2rem] bg-white p-6 shadow-soft sm:p-8" data-package-budget-form data-loading-form>
+                    <?php echo eventify_csrf_field(); ?>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div class="sm:col-span-2">
+                            <label class="text-sm font-bold text-slate-600">Event Name</label>
+                            <input type="text" name="event_name" required value="<?php echo htmlspecialchars($_POST['event_name'] ?? '', ENT_QUOTES); ?>" class="mt-2 w-full rounded-xl border border-purple-100 bg-indigo-50 px-4 py-4 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-purple-100">
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-bold text-slate-600">Event Type</label>
+                            <select name="event_type" required data-event-type-select class="mt-2 w-full rounded-xl border border-purple-100 bg-indigo-50 px-4 py-4 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-purple-100">
+                                <option value="">Select Type</option>
+                                <?php foreach(['Wedding', 'Birthday', 'Conference', 'Seminar'] as $type): ?>
+                                    <option <?php echo ($_POST['event_type'] ?? '') === $type ? 'selected' : ''; ?>><?php echo $type; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-bold text-slate-600">Package</label>
+                            <select name="package_type" required data-package-select class="mt-2 w-full rounded-xl border border-purple-100 bg-indigo-50 px-4 py-4 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-purple-100">
+                                <option value="">Select Package</option>
+                                <?php foreach(array_keys(eventify_package_prices()) as $package): ?>
+                                    <option <?php echo ($_POST['package_type'] ?? '') === $package ? 'selected' : ''; ?>><?php echo $package; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-bold text-slate-600">Date</label>
+                            <input type="date" name="event_date" min="<?php echo date('Y-m-d'); ?>" required value="<?php echo htmlspecialchars($_POST['event_date'] ?? '', ENT_QUOTES); ?>" class="mt-2 w-full rounded-xl border border-purple-100 bg-indigo-50 px-4 py-4 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-purple-100">
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-bold text-slate-600">Time</label>
+                            <input type="time" name="event_time" required value="<?php echo htmlspecialchars($_POST['event_time'] ?? '', ENT_QUOTES); ?>" class="mt-2 w-full rounded-xl border border-purple-100 bg-indigo-50 px-4 py-4 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-purple-100">
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-bold text-slate-600">Venue</label>
+                            <input type="text" name="venue" required value="<?php echo htmlspecialchars($_POST['venue'] ?? '', ENT_QUOTES); ?>" class="mt-2 w-full rounded-xl border border-purple-100 bg-indigo-50 px-4 py-4 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-purple-100">
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-bold text-slate-600">Guests</label>
+                            <input type="number" name="guests" min="1" required value="<?php echo htmlspecialchars($_POST['guests'] ?? '', ENT_QUOTES); ?>" class="mt-2 w-full rounded-xl border border-purple-100 bg-indigo-50 px-4 py-4 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-purple-100">
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-bold text-slate-600">Client Name</label>
+                            <input type="text" name="client_name" required value="<?php echo htmlspecialchars($_POST['client_name'] ?? '', ENT_QUOTES); ?>" class="mt-2 w-full rounded-xl border border-purple-100 bg-indigo-50 px-4 py-4 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-purple-100">
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-bold text-slate-600">Client Contact</label>
+                            <input type="text" name="client_contact" pattern="[0-9+\-\s()]{7,20}" required value="<?php echo htmlspecialchars($_POST['client_contact'] ?? '', ENT_QUOTES); ?>" class="mt-2 w-full rounded-xl border border-purple-100 bg-indigo-50 px-4 py-4 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-purple-100">
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-bold text-slate-600">Budget</label>
+                            <input type="number" name="budget" readonly data-budget-input value="<?php echo htmlspecialchars($_POST['budget'] ?? '', ENT_QUOTES); ?>" class="mt-2 w-full rounded-xl border border-purple-100 bg-slate-100 px-4 py-4 text-slate-600 outline-none">
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <p class="text-sm font-bold text-slate-600">Services</p>
+                            <div class="mt-3 grid gap-3 sm:grid-cols-4">
+                                <label class="flex cursor-pointer items-center gap-3 rounded-2xl bg-indigo-50 p-4 font-bold hover:bg-purple-50"><input type="checkbox" name="services[]" value="Catering" class="h-5 w-5 rounded border-purple-200 text-primary focus:ring-primary">Catering</label>
+                                <label class="flex cursor-pointer items-center gap-3 rounded-2xl bg-indigo-50 p-4 font-bold hover:bg-purple-50"><input type="checkbox" name="services[]" value="Sound" class="h-5 w-5 rounded border-purple-200 text-primary focus:ring-primary">Sound</label>
+                                <label class="flex cursor-pointer items-center gap-3 rounded-2xl bg-indigo-50 p-4 font-bold hover:bg-purple-50"><input type="checkbox" name="services[]" value="Decoration" class="h-5 w-5 rounded border-purple-200 text-primary focus:ring-primary">Decoration</label>
+                                <label class="flex cursor-pointer items-center gap-3 rounded-2xl bg-indigo-50 p-4 font-bold hover:bg-purple-50"><input type="checkbox" name="services[]" value="Lights" class="h-5 w-5 rounded border-purple-200 text-primary focus:ring-primary">Lights</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" name="save_event" class="mt-8 w-full rounded-2xl bg-gradient-to-r from-primary to-secondary px-6 py-4 text-lg font-semibold text-white shadow-soft">
+                        Save Event
+                    </button>
+                </form>
+            </div>
+        </main>
     </div>
-    <a href="../logout.php" class="logout">Logout</a>
-</aside>
-
-<!-- MAIN -->
-<main class="main">
-
-<div class="topbar">
-    <h1>Add Event</h1>
-</div>
-
-<div class="form-wrapper">
-
-<!-- FORM START -->
-<form method="POST" class="form-grid">
-
-    <div>
-        <label>Event Name</label>
-        <input type="text" name="event_name" required>
-    </div>
-
-    <div>
-        <label>Event Type</label>
-        <select name="event_type" required>
-            <option value="">Select Type</option>
-            <option>Wedding</option>
-            <option>Birthday</option>
-        </select>
-    </div>
-
-    <div>
-        <label>Date</label>
-        <input type="date" name="event_date" required>
-    </div>
-
-    <div>
-        <label>Time</label>
-        <input type="time" name="event_time" required>
-    </div>
-
-    <div>
-        <label>Venue</label>
-        <input type="text" name="venue" required>
-    </div>
-
-    <div>
-        <label>Guests</label>
-        <input type="number" name="guests" required>
-    </div>
-
-    <div>
-        <label>Client Name</label>
-        <input type="text" name="client_name" required>
-    </div>
-
-    <div>
-        <label>Client Contact</label>
-        <input type="text" name="client_contact" required>
-    </div>
-
-    <div>
-        <label>Package</label>
-        <select name="package_type" required>
-            <option value="">Select Package</option>
-            <option>Basic</option>
-            <option>Standard</option>
-            <option>Premium</option>
-        </select>
-    </div>
-
-    <div>
-        <label>Budget</label>
-        <input type="number" name="budget">
-    </div>
-
-    <!-- SERVICES (NOW INSIDE FORM) -->
-    <div class="services">
-        <label>Services</label>
-
-        <div class="services-grid">
-            <label><input type="checkbox" name="services[]" value="Catering"> Catering</label>
-            <label><input type="checkbox" name="services[]" value="Sound"> Sound</label>
-            <label><input type="checkbox" name="services[]" value="Decoration"> Decoration</label>
-            <label><input type="checkbox" name="services[]" value="Lights"> Lights</label>
-        </div>
-    </div>
-
-    <!-- BUTTON (NOW INSIDE FORM) -->
-    <div class="actions">
-        <button type="submit" name="save_event" class="btn-save">Save Event</button>
-    </div>
-
-</form>
-<!-- FORM END -->
-
-</div>
-
-</main>
-</div>
-
+    <?php echo eventify_package_price_script(); ?>
+    <?php echo eventify_sweetalert_flash(); ?>
+    <script src="assets/js/admin.js"></script>
 </body>
 </html>
