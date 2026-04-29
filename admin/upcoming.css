@@ -1,0 +1,183 @@
+body {
+    background: #f5f3ff;
+}
+
+/* GRID */
+.event-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+    padding: 20px;
+}
+
+/* CARD */
+.event-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 22px;
+    height: 320px; 
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e9d5ff;
+    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.08);
+    transition: 0.25s ease;
+}
+
+.event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.15);
+}
+
+/* CONTENT */
+.event-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* TAG */
+.event-tag {
+    background: #ede9fe;
+    color: #6d28d9;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+/* TITLE */
+.event-content h3 {
+    font-size: 20px; 
+    color: #2e1065;
+    margin: 10px 0;
+}
+
+/* TEXT */
+.event-content p {
+    font-size: 15px; 
+    color: #4b5563;
+    margin: 6px 0;
+}
+
+/* BUTTON */
+.view-btn {
+    margin-top: auto; 
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: #8b5cf6;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.view-btn:hover {
+    background: #7c3aed;
+}
+
+/* EMPTY */
+.empty {
+    text-align: center;
+    color: #9ca3af;
+}
+
+/* MODAL */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4);
+    padding: 80px;
+    
+    
+    
+}
+
+.modal-content {
+    background: #ffffff;
+    padding: 30px;
+    width: 50%;          
+    max-width: 800px;    
+    border-radius: 14px;
+    color: #2e1065;
+
+    margin-left: 55%;   
+    transform: translateX(-50%);
+}
+
+.modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 60px; 
+}
+
+.close {
+    float: right;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+
+/* ===== MODAL ACTION BUTTONS ===== */
+.modal-actions {
+    margin-top: 25px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* GENERAL BUTTON STYLE */
+.modal-actions button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+/* EDIT */
+#editBtn {
+    background: #ddd6fe;
+    color: #5b21b6;
+}
+
+#editBtn:hover {
+    background: #c4b5fd;
+}
+
+/* SAVE */
+#saveBtn {
+    background: #8b5cf6;
+    color: white;
+}
+
+#saveBtn:hover {
+    background: #7c3aed;
+}
+
+/* DELETE */
+#deleteBtn {
+    background: #ef4444;
+    color: white;
+}
+
+#deleteBtn:hover {
+    background: #dc2626;
+}
+
+/* ===== EDIT MODE VISUAL ===== */
+.modal-grid span[contenteditable="true"] {
+    background: #f3f4f6;
+    padding: 4px 6px;
+    border-radius: 4px;
+    outline: 1px solid #c4b5fd;
+}
+
+/* OPTIONAL: smoother feel */
+.modal-content {
+    transition: 0.2s ease;
+}

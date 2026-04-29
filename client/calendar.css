@@ -1,0 +1,65 @@
+.calendar-box {
+    margin-top: 20px;
+    background: white;
+    padding: 25px;
+    border-radius: 18px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+}
+
+/* HEADER */
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.calendar-header h2 {
+    margin: 0;
+}
+
+/* BUTTONS */
+.calendar-header button {
+    padding: 8px 14px;
+    border: none;
+    background: #7b6cf6;
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+/* GRID */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+}
+
+/* DAYS */
+.day {
+    background: #f3f0ff;
+    padding: 18px;
+    text-align: center;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.day:hover {
+    background: #7b6cf6;
+    color: white;
+}
+
+
+
+
+
+.available {
+    background: #e8fff1;
+    color: #1e9e5a;
+}
+
+.booked {
+    background: #ffe8e8;
+    color: #d63031;
+}

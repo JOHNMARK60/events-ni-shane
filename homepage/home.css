@@ -1,0 +1,290 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Inter', sans-serif;
+}
+
+/* ✅ ALLOW SCROLL */
+body{
+    overflow-x:hidden;
+}
+
+/* LAYOUT */
+.layout{
+    display:flex;
+}
+
+/* LEFT SIDE (FIXED) */
+.left{
+    position:fixed;
+    left:0;
+    top:0;
+    width:30%;
+    height:100vh;
+    background:#977ddf;
+    color:#f2e6ee;
+    padding:60px 40px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+}
+
+.logo{
+    font-size:18px;
+}
+
+.left h1{
+    font-size:52px;
+    margin-top:20px;
+    line-height:1.2;
+}
+
+.left span{
+    color:#e0dcff;
+}
+
+.sub{
+    margin-top:20px;
+    font-size:16px;
+}
+
+.links{
+    font-size:12px;
+}
+
+/* RIGHT SIDE (SCROLLABLE) */
+.right{
+    position:center;   /* 🔥 importante */
+    left:10%;            /* exact tapad sa purple */
+    top:0;
+    width:70%;
+    height:100vh;
+
+    overflow-y:auto;
+    overflow-x:hidden;
+
+    
+}
+
+/* LOGIN BUTTON (TOP RIGHT) */
+.login-btn{
+    position:fixed;
+    top:20px;
+    right:20px;
+    background:#6c63ff;
+    color:white;
+    padding:10px 20px;
+    border-radius:20px;
+    text-decoration:none;
+    z-index:999;
+}
+
+/* CONTENT CENTER */
+.content{
+    max-width:1400px;     /* 🔥 padak-a gyud */
+    width:100%;
+    margin-left:30px;      /* 🔥 center inside right */
+    padding:60px 60px;    /* 🔥 more breathing space */
+}
+
+/* HERO FIXED */
+.hero{
+    position:relative;
+    border-radius:25px;
+    overflow:hidden;
+    width:100%;
+}
+
+.hero img{
+    width:100%;
+    height:450px;   /* 🔥 slightly bigger */
+    object-fit:cover;
+}
+
+/* FLOATING LABELS */
+.pill{
+    position:absolute;
+    background:white;
+    padding:10px 15px;
+    border-radius:25px;
+    font-size:12px;
+}
+
+.top{ top:20px; right:20px; }
+.mid{ top:40%; left:30%; }
+.bottom{ bottom:20px; left:40%; }
+
+/* TEXT */
+.center-title{
+    text-align:center;
+    margin-top:60px;
+    font-size:28px;
+}
+
+.center-sub{
+    text-align:center;
+    margin-bottom:30px;
+}
+
+/* GRID */
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:40px;   /* 🔥 bigger spacing */
+}
+
+.card{
+    padding:70px;        /* 🔥 bigger */
+    border-radius:20px;
+}
+
+.card.big{
+    font-size:45px;
+    font-weight:600;
+}
+
+
+
+
+
+/* PACKAGES SECTION */
+.packages{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:25px;
+    margin-top:30px;
+}
+
+/* CARD */
+.package-card{
+    background:#e9e7ff; /* light purple */
+    border-radius:20px;
+    overflow:hidden;
+    text-align:center;
+    transition:0.3s;
+}
+
+/* HOVER EFFECT */
+.package-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
+
+/* IMAGE */
+.package-card img{
+    width:100%;
+    height:180px;
+    object-fit:cover;
+}
+
+/* TITLE */
+.package-card h3{
+    margin-top:15px;
+    font-size:18px;
+    color:#5a4fcf;
+}
+
+/* TEXT */
+.package-card p{
+    font-size:13px;
+    padding:10px 20px 20px;
+    color:#555;
+}
+
+.feature-title{
+    text-align:center;
+    font-size:32px;
+    margin-top:80px;
+    color:#5a4fcf;
+}
+
+.feature-sub{
+    text-align:center;
+    margin-bottom:30px;
+    color:#666;
+}
+
+
+/* IMAGE CARD */
+.image-card{
+    padding:0;
+    overflow:hidden;
+}
+
+/* IMAGE */
+.image-card img{
+    width:100%;
+    height:200px;
+    object-fit:cover;
+    display:block;
+}
+
+/* TEXT */
+.image-card p{
+    padding:15px;
+    text-align:center;
+    font-weight:500;
+    color:#5a4fcf;
+}
+
+.image-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
+
+
+/* FIXED BANNER */
+.banner{
+    position:relative;
+    width:100%;
+    max-width:1000px;   /* same width as content */
+    margin:40px auto;   /* centered */
+    border-radius:20px;
+    overflow:hidden;
+}
+
+/* IMAGE CONTROL */
+.banner img{
+    width:100%;
+    height:260px;       /* control size */
+    object-fit:cover;
+    display:block;
+}
+
+/* TEXT OVER IMAGE */
+.banner-text{
+    position:absolute;
+    top:50%;
+    left:30px;
+    transform:translateY(-50%);
+    color:white;
+    max-width:400px;
+}
+
+.banner-text h3{
+    font-size:22px;
+    margin-bottom:10px;
+}
+
+.banner-text p{
+    font-size:14px;
+    margin-bottom:15px;
+}
+
+/* BUTTON (keep your theme) */
+.btn{
+    background:#6c63ff;
+    color:white;
+    border:none;
+    padding:10px 20px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+
+
+
+
+
+

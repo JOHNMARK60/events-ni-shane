@@ -1,0 +1,179 @@
+/* GLOBAL */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #f6f4fb;
+}
+
+/* LAYOUT */
+.container {
+    display: flex;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 350px;
+    height: 100vh;
+    background: linear-gradient(180deg, #b9a7f5, #a18ae6);
+    padding: 25px 18px;
+    color: white;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* 🔥 FIXED */
+}
+
+/* TITLE */
+.logo {
+    font-size: 40px; /* 🔥 bigger */
+    font-weight: 700;
+    margin-bottom: 30px;
+
+    text-align: center;
+    letter-spacing: 1px;
+}
+
+/* NAV LINKS */
+.sidebar a {
+    display: flex;
+    align-items: center;
+    padding: 18px 18px;     /* 🔥 bigger */
+    margin-bottom: 16px;    /* 🔥 spacing */
+
+    font-size: 18px;        /* 🔥 bigger text */
+    font-weight: 600;
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+
+    transition: 0.3s;
+}
+
+/* ACTIVE */
+.sidebar a.active {
+    background: rgba(255,255,255,0.2);
+}
+
+/* HOVER */
+.sidebar a:hover {
+    background: rgba(255,255,255,0.25);
+}
+
+/* ADDITIONAL SPACING FIX */
+.sidebar nav {
+    margin-top: 20px;
+}
+
+.sidebar nav a {
+    line-height: 1.8; /* 🔥 cleaner spacing */
+}
+
+/* LOGOUT */
+.logout {
+    margin-top: auto;
+    margin-bottom: 20px;
+
+    width: 80%;
+    padding: 14px 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    text-decoration: none;
+
+    background: linear-gradient(135deg, #7b6cf6, #5a4de0);
+    border-radius: 12px;
+
+    border: none;
+    transition: 0.3s;
+}
+
+/* MAIN */
+.main {
+    flex: 1;
+    padding: 30px;
+}
+
+/* TOPBAR */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-box {
+    background: white;
+    padding: 8px 15px;
+    border-radius: 10px;
+}
+
+/* CARDS */
+.cards {
+    display: flex;
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.card {
+    flex: 1;
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.card h3 {
+    font-size: 14px;
+    color: gray;
+    margin: 0;
+}
+
+.card h1 {
+    margin-top: 10px;
+    color: #6c5ce7;
+}
+
+/* PANEL */
+.panel {
+    margin-top: 30px;
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+}
+
+.panel-header {
+    margin-bottom: 10px;
+}
+
+/* TABLE */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+}
+
+thead {
+    color: gray;
+}
+
+tbody tr {
+    border-top: 1px solid #eee;
+}
+
+/* BADGE */
+.badge {
+    background: #eae7ff;
+    color: #6c5ce7;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
