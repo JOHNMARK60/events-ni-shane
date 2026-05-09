@@ -44,7 +44,10 @@ while($row = $result->fetch_assoc()){
         <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
             <a href="dashboard.php" class="font-semibold text-primary">Menu</a>
             <h1 class="text-xl font-semibold sm:text-2xl">Events Calendar</h1>
-            <a href="reservation.php" class="rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-soft">+ New Event</a>
+            <div class="flex items-center gap-3">
+                <?php echo eventify_notification_widget($conn, 'client'); ?>
+                <a href="reservation.php" class="rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-soft">+ New Event</a>
+            </div>
         </div>
     </header>
 

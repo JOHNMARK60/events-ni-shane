@@ -30,6 +30,11 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $recent = $stmt->get_result();
 
+$stmt = $conn->prepare("SELECT * FROM reservations WHERE user_id=? ORDER BY id DESC LIMIT 4");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$dashboard_modal_recent = $stmt->get_result();
+
 $highlight = $conn->query("
     SELECT * FROM events
     WHERE event_date >= CURDATE()
@@ -75,11 +80,11 @@ $highlight_event = $highlight ? $highlight->fetch_assoc() : null;
             </a>
 
             <nav class="mt-10 grid gap-2">
-                <a href="dashboard.php" class="rounded-2xl bg-purple-50 px-4 py-3 font-bold text-primary">Dashboard</a>
-                <a href="calendar.php" class="rounded-2xl px-4 py-3 font-bold text-slate-600 hover:bg-purple-50 hover:text-primary">Events Calendar</a>
-                <a href="reservation.php" class="rounded-2xl px-4 py-3 font-bold text-slate-600 hover:bg-purple-50 hover:text-primary">New Reservation</a>
-                <a href="my_reservations.php" class="rounded-2xl px-4 py-3 font-bold text-slate-600 hover:bg-purple-50 hover:text-primary">My Reservations</a>
-                <button type="button" data-dashboard-modal-open="pricing" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50 hover:text-primary">Event Pricing</button>
+                <button type="button" data-dashboard-modal-open="dashboard" data-modal-target="dashboardModal" class="rounded-2xl bg-purple-50 px-4 py-3 text-left font-bold text-primary">Dashboard</button>
+                <button type="button" data-dashboard-modal-open="calendar" data-modal-target="calendarModal" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50 hover:text-primary">Events Calendar</button>
+                <button type="button" data-dashboard-modal-open="reservation" data-modal-target="reservationModal" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50 hover:text-primary">New Reservation</button>
+                <button type="button" data-dashboard-modal-open="reservations" data-modal-target="myReservationsModal" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50 hover:text-primary">My Reservations</button>
+                <button type="button" data-dashboard-modal-open="pricing" data-modal-target="pricingModal" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50 hover:text-primary">Event Pricing</button>
             </nav>
 
             <a href="../auth/logout.php" class="mt-auto rounded-2xl border border-purple-100 px-4 py-3 text-center font-bold text-slate-600 hover:bg-purple-50 hover:text-primary">Logout</a>
@@ -94,7 +99,7 @@ $highlight_event = $highlight ? $highlight->fetch_assoc() : null;
                     <span class="mt-1.5 block h-0.5 w-6 bg-current"></span>
                 </button>
                 <a href="dashboard.php" class="text-xl font-semibold">Eventify</a>
-                <a href="../auth/logout.php" class="rounded-xl px-3 py-2 text-sm font-bold text-primary">Logout</a>
+                <?php echo eventify_notification_widget($conn, 'client'); ?>
             </header>
 
             <section class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -103,9 +108,12 @@ $highlight_event = $highlight ? $highlight->fetch_assoc() : null;
                         <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">Client Portal</p>
                         <h1 class="mt-2 text-3xl font-semibold tracking-tight sm:text-5xl">Dashboard</h1>
                     </div>
-                    <button type="button" data-dashboard-modal-open="reservation" class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-primary to-secondary px-5 py-3 font-semibold text-white shadow-soft">
-                        + New Reservation
-                    </button>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <?php echo eventify_notification_widget($conn, 'client'); ?>
+                        <button type="button" data-dashboard-modal-open="reservation" class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-primary to-secondary px-5 py-3 font-semibold text-white shadow-soft">
+                            + New Reservation
+                        </button>
+                    </div>
                 </div>
 
                 <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -224,11 +232,11 @@ $highlight_event = $highlight ? $highlight->fetch_assoc() : null;
 
             <!-- Mobile bottom navigation -->
             <nav class="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 border-t border-purple-100 bg-white px-2 py-2 text-center text-xs font-bold text-slate-500 lg:hidden">
-                <a href="dashboard.php" class="rounded-2xl px-2 py-2 text-primary">Home</a>
-                <button type="button" data-dashboard-modal-open="calendar" class="rounded-2xl px-2 py-2">Events</button>
-                <button type="button" data-dashboard-modal-open="reservation" class="-mt-6 mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary text-2xl text-white shadow-soft">+</button>
-                <button type="button" data-dashboard-modal-open="reservations" class="rounded-2xl px-2 py-2">Bookings</button>
-                <button type="button" data-dashboard-modal-open="pricing" class="rounded-2xl px-2 py-2">Pricing</button>
+                <button type="button" data-dashboard-modal-open="dashboard" data-modal-target="dashboardModal" class="rounded-2xl px-2 py-2 text-primary">Home</button>
+                <button type="button" data-dashboard-modal-open="calendar" data-modal-target="calendarModal" class="rounded-2xl px-2 py-2">Events</button>
+                <button type="button" data-dashboard-modal-open="reservation" data-modal-target="reservationModal" class="-mt-6 mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary text-2xl text-white shadow-soft">+</button>
+                <button type="button" data-dashboard-modal-open="reservations" data-modal-target="myReservationsModal" class="rounded-2xl px-2 py-2">Bookings</button>
+                <button type="button" data-dashboard-modal-open="pricing" data-modal-target="pricingModal" class="rounded-2xl px-2 py-2">Pricing</button>
             </nav>
         </main>
     </div>
@@ -240,17 +248,70 @@ $highlight_event = $highlight ? $highlight->fetch_assoc() : null;
                 <button type="button" class="rounded-xl px-3 py-2 font-semibold text-primary" data-sidebar-close>Close</button>
             </div>
             <nav class="mt-8 grid gap-2">
-                <a href="dashboard.php" class="rounded-2xl bg-purple-50 px-4 py-3 font-bold text-primary">Dashboard</a>
-                <a href="calendar.php" class="rounded-2xl px-4 py-3 font-bold text-slate-600 hover:bg-purple-50">Events Calendar</a>
-                <a href="reservation.php" class="rounded-2xl px-4 py-3 font-bold text-slate-600 hover:bg-purple-50">New Reservation</a>
-                <a href="my_reservations.php" class="rounded-2xl px-4 py-3 font-bold text-slate-600 hover:bg-purple-50">My Reservations</a>
-                <button type="button" data-dashboard-modal-open="pricing" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50">Event Pricing</button>
+                <button type="button" data-dashboard-modal-open="dashboard" data-modal-target="dashboardModal" class="rounded-2xl bg-purple-50 px-4 py-3 text-left font-bold text-primary">Dashboard</button>
+                <button type="button" data-dashboard-modal-open="calendar" data-modal-target="calendarModal" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50">Events Calendar</button>
+                <button type="button" data-dashboard-modal-open="reservation" data-modal-target="reservationModal" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50">New Reservation</button>
+                <button type="button" data-dashboard-modal-open="reservations" data-modal-target="myReservationsModal" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50">My Reservations</button>
+                <button type="button" data-dashboard-modal-open="pricing" data-modal-target="pricingModal" class="rounded-2xl px-4 py-3 text-left font-bold text-slate-600 hover:bg-purple-50">Event Pricing</button>
                 <a href="../auth/logout.php" class="rounded-2xl px-4 py-3 font-bold text-slate-600 hover:bg-purple-50">Logout</a>
             </nav>
         </aside>
     </div>
 
-    <div class="dashboard-modal fixed inset-0 z-50 hidden overflow-y-auto bg-dark/60 p-4 backdrop-blur-sm" data-dashboard-modal="reservation" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="reservationModalTitle" tabindex="-1">
+    <div id="dashboardModal" class="dashboard-modal fixed inset-0 z-50 hidden overflow-y-auto bg-dark/60 p-4 backdrop-blur-sm" data-dashboard-modal="dashboard" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="dashboardModalTitle" tabindex="-1">
+        <div class="dashboard-modal-panel mx-auto my-6 w-full max-w-6xl rounded-[2rem] bg-white p-5 shadow-soft sm:p-8" data-modal-panel>
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Client Portal</p>
+                    <h2 id="dashboardModalTitle" class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Dashboard</h2>
+                </div>
+                <button type="button" class="rounded-xl px-3 py-2 font-semibold text-primary hover:bg-purple-50" data-dashboard-modal-close>Close</button>
+            </div>
+
+            <div class="mt-6 grid gap-5 md:grid-cols-3">
+                <article class="rounded-3xl bg-indigo-50 p-6">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Total Reservations</p>
+                    <p class="mt-3 text-5xl font-semibold"><?php echo $my_reservations; ?></p>
+                </article>
+                <article class="rounded-3xl bg-indigo-50 p-6">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Upcoming Events</p>
+                    <p class="mt-3 text-5xl font-semibold"><?php echo $upcoming; ?></p>
+                </article>
+                <article class="rounded-3xl bg-indigo-50 p-6">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Completed</p>
+                    <p class="mt-3 text-5xl font-semibold"><?php echo $completed; ?></p>
+                </article>
+            </div>
+
+            <section class="mt-6 overflow-hidden rounded-[2rem] border border-purple-100">
+                <div class="flex items-center justify-between border-b border-purple-100 bg-indigo-50 p-5">
+                    <h3 class="text-xl font-semibold">Recent Activity</h3>
+                    <button type="button" data-dashboard-modal-switch="reservations" class="font-bold text-primary">View all</button>
+                </div>
+                <div class="divide-y divide-purple-50">
+                    <?php if($dashboard_modal_recent && $dashboard_modal_recent->num_rows > 0): ?>
+                        <?php while($row = $dashboard_modal_recent->fetch_assoc()): ?>
+                            <article class="flex items-center gap-4 p-5">
+                                <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-purple-100 font-semibold text-primary">EV</span>
+                                <div class="min-w-0 flex-1">
+                                    <h4 class="font-semibold"><?php echo htmlspecialchars($row['event_name']); ?></h4>
+                                    <p class="text-sm text-slate-600"><?php echo htmlspecialchars($row['event_date']); ?> | <?php echo htmlspecialchars($row['event_type']); ?></p>
+                                </div>
+                                <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700"><?php echo htmlspecialchars($row['status']); ?></span>
+                            </article>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <div class="p-5">
+                            <h3 class="font-semibold">No reservations yet</h3>
+                            <p class="mt-1 text-sm text-slate-600">Start by creating your first booking.</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div id="reservationModal" class="dashboard-modal fixed inset-0 z-50 hidden overflow-y-auto bg-dark/60 p-4 backdrop-blur-sm" data-dashboard-modal="reservation" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="reservationModalTitle" tabindex="-1">
         <div class="dashboard-modal-panel mx-auto my-6 w-full max-w-5xl rounded-[2rem] bg-white p-5 shadow-soft sm:p-8" data-modal-panel>
             <div class="flex items-start justify-between gap-4">
                 <div>
@@ -335,7 +396,7 @@ $highlight_event = $highlight ? $highlight->fetch_assoc() : null;
         </div>
     </div>
 
-    <div class="dashboard-modal fixed inset-0 z-50 hidden overflow-y-auto bg-dark/60 p-4 backdrop-blur-sm" data-dashboard-modal="calendar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="calendarModalTitle" tabindex="-1">
+    <div id="calendarModal" class="dashboard-modal fixed inset-0 z-50 hidden overflow-y-auto bg-dark/60 p-4 backdrop-blur-sm" data-dashboard-modal="calendar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="calendarModalTitle" tabindex="-1">
         <div class="dashboard-modal-panel mx-auto my-6 w-full max-w-7xl rounded-[2rem] bg-white p-5 shadow-soft sm:p-8" data-modal-panel>
             <div class="flex items-start justify-between gap-4">
                 <div>
@@ -379,7 +440,7 @@ $highlight_event = $highlight ? $highlight->fetch_assoc() : null;
         </div>
     </div>
 
-    <div class="dashboard-modal fixed inset-0 z-50 hidden overflow-y-auto bg-dark/60 p-4 backdrop-blur-sm" data-dashboard-modal="reservations" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="reservationsModalTitle" tabindex="-1">
+    <div id="myReservationsModal" class="dashboard-modal fixed inset-0 z-50 hidden overflow-y-auto bg-dark/60 p-4 backdrop-blur-sm" data-dashboard-modal="reservations" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="reservationsModalTitle" tabindex="-1">
         <div class="dashboard-modal-panel mx-auto my-6 w-full max-w-6xl rounded-[2rem] bg-white p-5 shadow-soft sm:p-8" data-modal-panel>
             <div class="flex items-start justify-between gap-4">
                 <div>
@@ -396,7 +457,7 @@ $highlight_event = $highlight ? $highlight->fetch_assoc() : null;
         </div>
     </div>
 
-    <div class="dashboard-modal fixed inset-0 z-50 hidden overflow-y-auto bg-dark/60 p-4 backdrop-blur-sm" data-dashboard-modal="pricing" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pricingModalTitle" tabindex="-1">
+    <div id="pricingModal" class="dashboard-modal fixed inset-0 z-50 hidden overflow-y-auto bg-dark/60 p-4 backdrop-blur-sm" data-dashboard-modal="pricing" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pricingModalTitle" tabindex="-1">
         <div class="dashboard-modal-panel mx-auto my-6 w-full max-w-6xl rounded-[2rem] bg-white p-5 shadow-soft sm:p-8" data-modal-panel>
             <div class="flex items-start justify-between gap-4">
                 <div>
@@ -484,9 +545,9 @@ $highlight_event = $highlight ? $highlight->fetch_assoc() : null;
         </div>
     </div>
 
-    <div id="reservationModal" class="dashboard-modal fixed inset-0 z-[70] hidden bg-dark/50 p-4" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="reservationDetailsTitle" tabindex="-1">
-        <div class="dashboard-modal-panel mx-auto mt-10 max-w-2xl rounded-[2rem] bg-white p-6 shadow-soft" data-modal-panel>
-            <div class="flex items-start justify-between gap-4">
+    <div id="reservationDetailsModal" class="dashboard-modal fixed inset-0 z-[70] hidden grid place-items-center overflow-y-auto bg-dark/50 p-4" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="reservationDetailsTitle" tabindex="-1">
+        <div class="dashboard-modal-panel mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[2rem] bg-white p-6 pb-10 shadow-soft" data-modal-panel>
+            <div class="sticky top-0 z-10 flex items-start justify-between gap-4 bg-white pb-4">
                 <div>
                     <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Reservation Details</p>
                     <h2 id="reservationDetailsTitle" class="mt-2 text-3xl font-semibold"></h2>

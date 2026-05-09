@@ -2,6 +2,45 @@ const adminSidebar = document.querySelector("[data-admin-sidebar]");
 const adminSidebarButton = document.querySelector("[data-admin-sidebar-button]");
 const adminSidebarClose = document.querySelector("[data-admin-sidebar-close]");
 
+document.addEventListener("click", (event) => {
+    const toggle = event.target.closest("[data-notification-toggle]");
+    if (toggle) {
+        const root = toggle.closest("[data-notification-root]");
+        root?.querySelector("[data-notification-menu]")?.classList.toggle("hidden");
+        markNotificationsRead(root);
+        return;
+    }
+
+    document.querySelectorAll("[data-notification-menu]").forEach((menu) => {
+        if (!menu.closest("[data-notification-root]")?.contains(event.target)) {
+            menu.classList.add("hidden");
+        }
+    });
+});
+
+function markNotificationsRead(root) {
+    const form = root?.querySelector("[data-notification-read-form]");
+
+    if (!form || form.dataset.submitted === "true") {
+        return;
+    }
+
+    form.dataset.submitted = "true";
+    fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+    }).then(() => {
+        root.querySelector("[data-notification-dot]")?.remove();
+        const count = root.querySelector("[data-notification-unread-count]");
+        if (count) {
+            count.textContent = "0";
+        }
+    }).catch(() => {
+        form.dataset.submitted = "false";
+    });
+}
+
 if (adminSidebar && adminSidebarButton) {
     adminSidebarButton.addEventListener("click", () => adminSidebar.classList.remove("hidden"));
 }

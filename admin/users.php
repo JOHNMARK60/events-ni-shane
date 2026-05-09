@@ -4,7 +4,16 @@ include '../config/db.php';
 
 eventify_require_role('admin');
 
-$users = $conn->query("SELECT * FROM users ORDER BY id DESC");
+$perPage = 10;
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+$totalRows = (int) $conn->query("SELECT COUNT(*) AS total FROM users")->fetch_assoc()['total'];
+$totalPages = max(1, (int) ceil($totalRows / $perPage));
+
+$stmt = $conn->prepare("SELECT * FROM users ORDER BY id DESC LIMIT ? OFFSET ?");
+$stmt->bind_param("ii", $perPage, $offset);
+$stmt->execute();
+$users = $stmt->get_result();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -56,7 +65,10 @@ $users = $conn->query("SELECT * FROM users ORDER BY id DESC");
                         <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">Account Directory</p>
                         <h1 class="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Users</h1>
                     </div>
-                    <input type="search" data-table-search data-table-target="usersTable" placeholder="Search users" class="rounded-2xl border border-purple-100 bg-white px-4 py-3 outline-none focus:border-primary focus:ring-4 focus:ring-purple-100">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <?php echo eventify_notification_widget($conn, 'admin'); ?>
+                        <input type="search" data-table-search data-table-target="usersTable" placeholder="Search users" class="rounded-2xl border border-purple-100 bg-white px-4 py-3 outline-none focus:border-primary focus:ring-4 focus:ring-purple-100">
+                    </div>
                 </div>
 
                 <section class="mt-8 overflow-hidden rounded-[2rem] bg-white shadow-soft">
@@ -95,6 +107,16 @@ $users = $conn->query("SELECT * FROM users ORDER BY id DESC");
                         </table>
                     </div>
                 </section>
+
+                <?php if($totalPages > 1): ?>
+                    <nav class="mt-6 flex flex-wrap items-center gap-2" aria-label="User pages">
+                        <?php for($i = 1; $i <= $totalPages; $i++): ?>
+                            <a href="<?php echo htmlspecialchars(eventify_page_url($i), ENT_QUOTES); ?>" class="rounded-xl px-4 py-2 text-sm font-semibold <?php echo $page === $i ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:text-primary'; ?>">
+                                <?php echo $i; ?>
+                            </a>
+                        <?php endfor; ?>
+                    </nav>
+                <?php endif; ?>
             </div>
         </main>
     </div>

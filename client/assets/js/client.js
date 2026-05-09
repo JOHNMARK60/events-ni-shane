@@ -1,8 +1,8 @@
 const sidebar = document.querySelector("[data-sidebar]");
 const sidebarButton = document.querySelector("[data-sidebar-button]");
 const sidebarClose = document.querySelector("[data-sidebar-close]");
-const reservationModal = document.getElementById("reservationModal");
-const reservationDetailsTitle = document.getElementById("reservationDetailsTitle");
+const reservationDetailsModal = document.getElementById("reservationDetailsModal") || document.getElementById("reservationModal");
+const reservationDetailsTitle = document.getElementById("reservationDetailsTitle") || document.getElementById("modalTitle");
 const modalDetails = document.getElementById("modalDetails");
 
 let activeModal = null;
@@ -30,10 +30,36 @@ document.addEventListener("keydown", handleKeyboard);
 initPackageBudgetForms(document);
 
 async function handleDocumentClick(event) {
+    const notificationToggle = event.target.closest("[data-notification-toggle]");
+    if (notificationToggle) {
+        const root = notificationToggle.closest("[data-notification-root]");
+        root?.querySelector("[data-notification-menu]")?.classList.toggle("hidden");
+        markNotificationsRead(root);
+        return;
+    }
+
+    document.querySelectorAll("[data-notification-menu]").forEach((menu) => {
+        if (!menu.closest("[data-notification-root]")?.contains(event.target)) {
+            menu.classList.add("hidden");
+        }
+    });
+
     const openButton = event.target.closest("[data-dashboard-modal-open]");
     if (openButton) {
+        event.preventDefault();
         openModal(openButton.dataset.dashboardModalOpen);
         sidebar?.classList.add("hidden");
+        return;
+    }
+
+    const modalTargetButton = event.target.closest("[data-modal-target]");
+    if (modalTargetButton) {
+        event.preventDefault();
+        const modal = document.getElementById(modalTargetButton.dataset.modalTarget);
+        if (modal?.dataset.dashboardModal) {
+            openModal(modal.dataset.dashboardModal);
+            sidebar?.classList.add("hidden");
+        }
         return;
     }
 
@@ -62,7 +88,7 @@ async function handleDocumentClick(event) {
         return;
     }
 
-    if (reservationModal && event.target === reservationModal) {
+    if (reservationDetailsModal && event.target === reservationDetailsModal) {
         closeReservationDetails();
         return;
     }
@@ -138,7 +164,7 @@ function handleKeyboard(event) {
     const topModal = getTopOpenModal();
 
     if (event.key === "Escape") {
-        if (reservationModal && !reservationModal.classList.contains("hidden")) {
+        if (reservationDetailsModal && !reservationDetailsModal.classList.contains("hidden")) {
             closeReservationDetails();
             return;
         }
@@ -482,7 +508,7 @@ function switchReservationTab(button) {
 }
 
 function openReservationDetails(button) {
-    if (!reservationModal || !reservationDetailsTitle || !modalDetails) {
+    if (!reservationDetailsModal || !reservationDetailsTitle || !modalDetails) {
         return;
     }
 
@@ -497,8 +523,14 @@ function openReservationDetails(button) {
         ["Client", button.dataset.client],
         ["Contact", button.dataset.contact],
         ["Package", button.dataset.package],
-        ["Budget", button.dataset.budget],
+        ["Budget", formatPeso(button.dataset.budget)],
         ["Services", button.dataset.services],
+        ["Status", button.dataset.status],
+        ["Submitted", button.dataset.created],
+        ["Approved", button.dataset.approved],
+        ["Rejected", button.dataset.rejected],
+        ["Cancelled", button.dataset.cancelled],
+        ["Last Updated", button.dataset.updated],
     ];
 
     modalDetails.innerHTML = details.map(([label, value]) => `
@@ -508,25 +540,25 @@ function openReservationDetails(button) {
         </div>
     `).join("");
 
-    reservationModal.classList.remove("hidden");
-    reservationModal.setAttribute("aria-hidden", "false");
+    reservationDetailsModal.classList.remove("hidden");
+    reservationDetailsModal.setAttribute("aria-hidden", "false");
     requestAnimationFrame(() => {
-        reservationModal.classList.add("is-open");
-        focusFirstElement(reservationModal);
+        reservationDetailsModal.classList.add("is-open");
+        focusFirstElement(reservationDetailsModal);
     });
     document.body.classList.add("modal-open");
 }
 
 function closeReservationDetails() {
-    if (!reservationModal || reservationModal.classList.contains("hidden")) {
+    if (!reservationDetailsModal || reservationDetailsModal.classList.contains("hidden")) {
         return;
     }
 
-    reservationModal.classList.remove("is-open");
-    reservationModal.setAttribute("aria-hidden", "true");
+    reservationDetailsModal.classList.remove("is-open");
+    reservationDetailsModal.setAttribute("aria-hidden", "true");
 
     window.setTimeout(() => {
-        reservationModal.classList.add("hidden");
+        reservationDetailsModal.classList.add("hidden");
         syncBodyScrollLock();
         if (previousFocus instanceof HTMLElement) {
             previousFocus.focus();
@@ -605,8 +637,8 @@ function syncBodyScrollLock() {
 }
 
 function getTopOpenModal() {
-    if (reservationModal && !reservationModal.classList.contains("hidden")) {
-        return reservationModal;
+    if (reservationDetailsModal && !reservationDetailsModal.classList.contains("hidden")) {
+        return reservationDetailsModal;
     }
 
     return activeModal && !activeModal.classList.contains("hidden") ? activeModal : null;
@@ -705,4 +737,44 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+}
+
+function formatPeso(value) {
+    if (value === undefined || value === null || value === "") {
+        return "";
+    }
+
+    const amount = Number(String(value).replace(/[^0-9.-]/g, ""));
+
+    if (!Number.isFinite(amount)) {
+        return "";
+    }
+
+    return `₱${amount.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })}`;
+}
+
+function markNotificationsRead(root) {
+    const form = root?.querySelector("[data-notification-read-form]");
+
+    if (!form || form.dataset.submitted === "true") {
+        return;
+    }
+
+    form.dataset.submitted = "true";
+    fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+    }).then(() => {
+        root.querySelector("[data-notification-dot]")?.remove();
+        const count = root.querySelector("[data-notification-unread-count]");
+        if (count) {
+            count.textContent = "0";
+        }
+    }).catch(() => {
+        form.dataset.submitted = "false";
+    });
 }

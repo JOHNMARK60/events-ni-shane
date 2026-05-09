@@ -19,6 +19,36 @@ $approved_events = $conn->query("SELECT COUNT(*) as total FROM events")
 
 $recent = $conn->query("SELECT * FROM reservations ORDER BY id DESC LIMIT 6");
 
+$monthly_reports = $conn->query("
+    SELECT DATE_FORMAT(event_date, '%Y-%m') AS month_label, COUNT(*) AS total
+    FROM reservations
+    GROUP BY month_label
+    ORDER BY month_label DESC
+    LIMIT 6
+");
+
+$budget_report = $conn->query("
+    SELECT COALESCE(SUM(budget), 0) AS total_budget
+    FROM reservations
+    WHERE status IN ('Approved', 'Pending')
+")->fetch_assoc();
+
+$popular_types = $conn->query("
+    SELECT COALESCE(NULLIF(event_type, ''), 'Unspecified') AS event_type, COUNT(*) AS total
+    FROM reservations
+    GROUP BY event_type
+    ORDER BY total DESC
+    LIMIT 5
+");
+
+$package_usage = $conn->query("
+    SELECT COALESCE(NULLIF(package_type, ''), 'Unspecified') AS package_type, COUNT(*) AS total
+    FROM reservations
+    GROUP BY package_type
+    ORDER BY total DESC
+    LIMIT 5
+");
+
 function admin_badge_class($status) {
     $status = strtolower($status);
 
@@ -91,7 +121,7 @@ function admin_badge_class($status) {
                     <span class="mt-1.5 block h-0.5 w-6 bg-current"></span>
                 </button>
                 <a href="dashboard.php" class="text-xl font-semibold">Eventify</a>
-                <a href="../auth/logout.php" class="rounded-xl px-3 py-2 text-sm font-bold text-primary">Logout</a>
+                <?php echo eventify_notification_widget($conn, 'admin'); ?>
             </header>
 
             <section class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -100,7 +130,8 @@ function admin_badge_class($status) {
                         <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">Admin Overview</p>
                         <h1 class="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Dashboard</h1>
                     </div>
-                    <div class="flex flex-col gap-3 sm:flex-row">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <?php echo eventify_notification_widget($conn, 'admin'); ?>
                         <input type="search" data-table-search data-table-target="recentReservations" placeholder="Search recent reservations" class="rounded-2xl border border-purple-100 bg-white px-4 py-3 outline-none focus:border-primary focus:ring-4 focus:ring-purple-100">
                         <a href="reservations.php?filter=pending" class="rounded-2xl bg-gradient-to-r from-primary to-secondary px-5 py-3 text-center font-semibold text-white shadow-soft">Review Pending</a>
                     </div>
@@ -167,6 +198,57 @@ function admin_badge_class($status) {
                                 <?php endif; ?>
                             </tbody>
                         </table>
+                    </div>
+                </section>
+
+                <section class="mt-8 rounded-[2rem] bg-white p-6 shadow-soft">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Reports</p>
+                            <h2 class="mt-1 text-2xl font-semibold">Reservation Insights</h2>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-500">Estimated pipeline: &#8369;<?php echo number_format((float) $budget_report['total_budget'], 2); ?></p>
+                    </div>
+
+                    <div class="mt-6 grid gap-6 lg:grid-cols-3">
+                        <article class="rounded-3xl bg-indigo-50 p-5">
+                            <h3 class="font-semibold">Monthly Reservations</h3>
+                            <div class="mt-4 space-y-3 text-sm">
+                                <?php if($monthly_reports && $monthly_reports->num_rows > 0): ?>
+                                    <?php while($row = $monthly_reports->fetch_assoc()): ?>
+                                        <div class="flex justify-between gap-4"><span><?php echo htmlspecialchars($row['month_label']); ?></span><strong><?php echo (int) $row['total']; ?></strong></div>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <p class="text-slate-600">No reservation data yet.</p>
+                                <?php endif; ?>
+                            </div>
+                        </article>
+
+                        <article class="rounded-3xl bg-indigo-50 p-5">
+                            <h3 class="font-semibold">Popular Event Types</h3>
+                            <div class="mt-4 space-y-3 text-sm">
+                                <?php if($popular_types && $popular_types->num_rows > 0): ?>
+                                    <?php while($row = $popular_types->fetch_assoc()): ?>
+                                        <div class="flex justify-between gap-4"><span><?php echo htmlspecialchars($row['event_type']); ?></span><strong><?php echo (int) $row['total']; ?></strong></div>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <p class="text-slate-600">No event type data yet.</p>
+                                <?php endif; ?>
+                            </div>
+                        </article>
+
+                        <article class="rounded-3xl bg-indigo-50 p-5">
+                            <h3 class="font-semibold">Package Usage</h3>
+                            <div class="mt-4 space-y-3 text-sm">
+                                <?php if($package_usage && $package_usage->num_rows > 0): ?>
+                                    <?php while($row = $package_usage->fetch_assoc()): ?>
+                                        <div class="flex justify-between gap-4"><span><?php echo htmlspecialchars($row['package_type']); ?></span><strong><?php echo (int) $row['total']; ?></strong></div>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <p class="text-slate-600">No package data yet.</p>
+                                <?php endif; ?>
+                            </div>
+                        </article>
                     </div>
                 </section>
             </section>

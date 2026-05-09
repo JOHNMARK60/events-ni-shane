@@ -45,6 +45,14 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
         );
 
         if($stmt->execute()){
+            eventify_create_notification(
+                $conn,
+                null,
+                'admin',
+                'New reservation request',
+                'New reservation request from ' . $payload['client_name'] . ' for ' . $payload['event_type'] . '.'
+            );
+            eventify_prepare_email_notification('admin@eventify.com', 'New reservation submitted', 'A client submitted a new Eventify reservation for review.');
             eventify_set_flash('success', 'Reservation submitted', 'Waiting for admin approval.');
             header("Location: $redirect");
             exit();
@@ -84,7 +92,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
         <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
             <a href="dashboard.php" class="font-semibold text-primary">Back</a>
             <h1 class="text-xl font-semibold sm:text-2xl">New Reservation</h1>
-            <a href="../auth/logout.php" class="font-bold text-slate-600">Logout</a>
+            <?php echo eventify_notification_widget($conn, 'client'); ?>
         </div>
     </header>
 

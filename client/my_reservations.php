@@ -80,7 +80,7 @@ function reservation_badge_class($status) {
         <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
             <a href="dashboard.php" class="font-semibold text-primary">Menu</a>
             <a href="dashboard.php" class="text-xl font-semibold">Eventify</a>
-            <a href="../auth/logout.php" class="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white">Logout</a>
+            <?php echo eventify_notification_widget($conn, 'client'); ?>
         </div>
     </header>
 
@@ -136,15 +136,25 @@ function reservation_badge_class($status) {
                                     data-contact="<?php echo htmlspecialchars($row['client_contact'], ENT_QUOTES); ?>"
                                     data-package="<?php echo htmlspecialchars($row['package_type'], ENT_QUOTES); ?>"
                                     data-budget="<?php echo htmlspecialchars($row['budget'], ENT_QUOTES); ?>"
-                                    data-services="<?php echo htmlspecialchars($row['services'], ENT_QUOTES); ?>">
+                                    data-services="<?php echo htmlspecialchars($row['services'], ENT_QUOTES); ?>"
+                                    data-status="<?php echo htmlspecialchars($row['status'], ENT_QUOTES); ?>"
+                                    data-created="<?php echo htmlspecialchars($row['created_at'] ?? '', ENT_QUOTES); ?>"
+                                    data-approved="<?php echo htmlspecialchars($row['approved_at'] ?? '', ENT_QUOTES); ?>"
+                                    data-rejected="<?php echo htmlspecialchars($row['rejected_at'] ?? '', ENT_QUOTES); ?>"
+                                    data-cancelled="<?php echo htmlspecialchars($row['cancelled_at'] ?? '', ENT_QUOTES); ?>"
+                                    data-updated="<?php echo htmlspecialchars($row['updated_at'] ?? '', ENT_QUOTES); ?>">
                                     View Details
                                 </button>
-                                <button type="button" class="grid h-11 w-11 place-items-center rounded-xl border border-purple-100 font-semibold text-primary hover:bg-purple-50" title="Edit reservation" onclick="this.parentElement.querySelector('[data-reservation-view]').click()">Edit</button>
-                                <form method="POST" action="cancel.php" data-confirm-form data-confirm-message="Cancel this reservation?">
-                                    <?php echo eventify_csrf_field(); ?>
-                                    <input type="hidden" name="id" value="<?php echo $row['id']; ?>">
-                                    <button type="submit" class="grid h-11 w-11 place-items-center rounded-xl border border-red-100 font-semibold text-red-600 hover:bg-red-50" title="Cancel reservation">X</button>
-                                </form>
+                                <?php if(strtolower($row['status']) === 'pending'): ?>
+                                    <a href="edit_reservation.php?id=<?php echo (int) $row['id']; ?>" class="grid h-11 w-11 place-items-center rounded-xl border border-purple-100 font-semibold text-primary hover:bg-purple-50" title="Edit reservation">Edit</a>
+                                <?php endif; ?>
+                                <?php if(!in_array(strtolower($row['status']), ['cancelled', 'rejected'], true)): ?>
+                                    <form method="POST" action="cancel.php" data-confirm-form data-confirm-message="Cancel this reservation?">
+                                        <?php echo eventify_csrf_field(); ?>
+                                        <input type="hidden" name="id" value="<?php echo $row['id']; ?>">
+                                        <button type="submit" class="grid h-11 w-11 place-items-center rounded-xl border border-red-100 font-semibold text-red-600 hover:bg-red-50" title="Cancel reservation">X</button>
+                                    </form>
+                                <?php endif; ?>
                             </div>
                         </article>
                     <?php endforeach; ?>
@@ -165,7 +175,7 @@ function reservation_badge_class($status) {
                     <div class="mt-5 space-y-4 text-sm">
                         <div class="flex justify-between"><span>Active Bookings</span><strong><?php echo str_pad($activeBookings, 2, '0', STR_PAD_LEFT); ?></strong></div>
                         <div class="flex justify-between"><span>Waitlisted</span><strong><?php echo str_pad($waitlisted, 2, '0', STR_PAD_LEFT); ?></strong></div>
-                        <div class="border-t border-purple-100 pt-4 flex justify-between"><span>Total Spent</span><strong class="text-primary">$<?php echo number_format($totalSpent, 2); ?></strong></div>
+                        <div class="border-t border-purple-100 pt-4 flex justify-between"><span>Total Spent</span><strong class="text-primary">&#8369;<?php echo number_format((float) $totalSpent, 2); ?></strong></div>
                     </div>
                 </section>
 
@@ -181,9 +191,9 @@ function reservation_badge_class($status) {
         </div>
     </main>
 
-    <div id="reservationModal" class="fixed inset-0 z-50 hidden bg-dark/50 p-4">
-        <div class="mx-auto mt-10 max-w-2xl rounded-[2rem] bg-white p-6 shadow-soft">
-            <div class="flex items-start justify-between gap-4">
+    <div id="reservationModal" class="fixed inset-0 z-50 hidden grid place-items-center overflow-y-auto bg-dark/50 p-4">
+        <div class="mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[2rem] bg-white p-6 pb-10 shadow-soft">
+            <div class="sticky top-0 z-10 flex items-start justify-between gap-4 bg-white pb-4">
                 <div>
                     <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Reservation Details</p>
                     <h2 id="modalTitle" class="mt-2 text-3xl font-semibold"></h2>

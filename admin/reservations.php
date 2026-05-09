@@ -13,7 +13,12 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reservation_action']))
     if(!eventify_verify_csrf()) {
         eventify_set_flash('error', 'Action failed', 'Security check failed. Please try again.');
     } else {
-        $stmt = $conn->prepare("SELECT * FROM reservations WHERE id=?");
+        $stmt = $conn->prepare("
+            SELECT r.*, u.email AS user_email
+            FROM reservations r
+            LEFT JOIN users u ON u.id = r.user_id
+            WHERE r.id=?
+        ");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $res = $stmt->get_result()->fetch_assoc();
@@ -23,19 +28,8 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reservation_action']))
         } elseif(strtolower($res['status']) !== 'pending') {
             eventify_set_flash('error', 'Action failed', 'Only pending reservations can be updated.');
         } elseif($action === "approve"){
-            $stmt = $conn->prepare("
-                SELECT id
-                FROM events
-                WHERE event_date=?
-                  AND event_time=?
-                  AND LOWER(TRIM(venue)) = LOWER(TRIM(?))
-                LIMIT 1
-            ");
-            $stmt->bind_param("sss", $res['event_date'], $res['event_time'], $res['venue']);
-            $stmt->execute();
-            $conflict = $stmt->get_result()->fetch_assoc();
-
-            if($conflict) {
+            // Security: approval is POST+CSRF protected and checks the approved calendar before mutating state.
+            if(eventify_event_conflict_exists($conn, $res['event_date'], $res['event_time'], $res['venue'])) {
                 eventify_set_flash('error', 'Slot already booked', 'Another approved event already uses the same date, time, and venue.');
             } else {
                 $conn->begin_transaction();
@@ -64,12 +58,32 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reservation_action']))
                 $stmt->execute();
 
                 $conn->commit();
+                if(!empty($res['user_id'])) {
+                    eventify_create_notification(
+                        $conn,
+                        (int) $res['user_id'],
+                        'client',
+                        'Reservation approved',
+                        'Your reservation for ' . $res['event_type'] . ' has been approved.'
+                    );
+                }
+                eventify_prepare_email_notification($res['user_email'] ?: $res['client_contact'], 'Reservation approved', 'Your Eventify reservation has been approved.');
                 eventify_set_flash('success', 'Reservation approved', 'The reservation was added to the event calendar.');
             }
         } elseif($action === "reject"){
             $stmt = $conn->prepare("UPDATE reservations SET status='Rejected', rejected_at=NOW() WHERE id=?");
             $stmt->bind_param("i", $id);
             $stmt->execute();
+            if(!empty($res['user_id'])) {
+                eventify_create_notification(
+                    $conn,
+                    (int) $res['user_id'],
+                    'client',
+                    'Reservation rejected',
+                    'Your reservation for ' . $res['event_type'] . ' has been rejected.'
+                );
+            }
+            eventify_prepare_email_notification($res['user_email'] ?: $res['client_contact'], 'Reservation rejected', 'Your Eventify reservation was rejected.');
             eventify_set_flash('success', 'Reservation rejected', 'The reservation was marked as rejected.');
         } else {
             eventify_set_flash('error', 'Action failed', 'Unknown reservation action.');
@@ -87,12 +101,27 @@ if(!in_array($filter, $allowedFilters)) {
     $filter = 'all';
 }
 
+$perPage = 10;
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+
 if($filter === 'all') {
-    $result = $conn->query("SELECT * FROM reservations ORDER BY id DESC");
+    $totalRows = (int) $conn->query("SELECT COUNT(*) AS total FROM reservations")->fetch_assoc()['total'];
+    $stmt = $conn->prepare("SELECT * FROM reservations ORDER BY id DESC LIMIT ? OFFSET ?");
+    $stmt->bind_param("ii", $perPage, $offset);
 } else {
     $status = ucfirst($filter);
-    $result = $conn->query("SELECT * FROM reservations WHERE status='$status' ORDER BY id DESC");
+    $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM reservations WHERE status=?");
+    $stmt->bind_param("s", $status);
+    $stmt->execute();
+    $totalRows = (int) $stmt->get_result()->fetch_assoc()['total'];
+
+    $stmt = $conn->prepare("SELECT * FROM reservations WHERE status=? ORDER BY id DESC LIMIT ? OFFSET ?");
+    $stmt->bind_param("sii", $status, $perPage, $offset);
 }
+$stmt->execute();
+$result = $stmt->get_result();
+$totalPages = max(1, (int) ceil($totalRows / $perPage));
 
 function reservation_status_class($status) {
     $status = strtolower($status);
@@ -163,7 +192,10 @@ function reservation_status_class($status) {
                         <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">Admin Workspace</p>
                         <h1 class="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Reservations</h1>
                     </div>
-                    <input type="search" data-table-search data-table-target="reservationsTable" placeholder="Search reservations" class="rounded-2xl border border-purple-100 bg-white px-4 py-3 outline-none focus:border-primary focus:ring-4 focus:ring-purple-100">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <?php echo eventify_notification_widget($conn, 'admin'); ?>
+                        <input type="search" data-table-search data-table-target="reservationsTable" placeholder="Search reservations" class="rounded-2xl border border-purple-100 bg-white px-4 py-3 outline-none focus:border-primary focus:ring-4 focus:ring-purple-100">
+                    </div>
                 </div>
 
                 <div class="mt-6 flex flex-wrap gap-3">
@@ -212,7 +244,7 @@ function reservation_status_class($status) {
                                                         <summary class="cursor-pointer rounded-xl border border-purple-100 px-3 py-2 font-semibold text-primary hover:bg-purple-50">View</summary>
                                                         <div class="absolute z-20 mt-2 w-72 rounded-2xl border border-purple-100 bg-white p-4 shadow-soft">
                                                             <p><strong>Guests:</strong> <?php echo htmlspecialchars($row['guest']); ?></p>
-                                                            <p><strong>Budget:</strong> $<?php echo htmlspecialchars($row['budget']); ?></p>
+                                                            <p><strong>Budget:</strong> &#8369;<?php echo number_format((float) $row['budget'], 2); ?></p>
                                                             <p><strong>Services:</strong> <?php echo htmlspecialchars($row['services']); ?></p>
                                                         </div>
                                                     </details>
@@ -243,6 +275,16 @@ function reservation_status_class($status) {
                         </table>
                     </div>
                 </section>
+
+                <?php if($totalPages > 1): ?>
+                    <nav class="mt-6 flex flex-wrap items-center gap-2" aria-label="Reservation pages">
+                        <?php for($i = 1; $i <= $totalPages; $i++): ?>
+                            <a href="<?php echo htmlspecialchars(eventify_page_url($i), ENT_QUOTES); ?>" class="rounded-xl px-4 py-2 text-sm font-semibold <?php echo $page === $i ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:text-primary'; ?>">
+                                <?php echo $i; ?>
+                            </a>
+                        <?php endfor; ?>
+                    </nav>
+                <?php endif; ?>
             </div>
         </main>
     </div>

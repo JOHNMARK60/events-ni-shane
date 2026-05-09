@@ -147,3 +147,4 @@ Suggested Priority Improvements
 - Priority 3: Add double-booking prevention for date, time, and venue.
 - Priority 4: Improve reservation editing, status tracking, and notifications.
 - Priority 5: Add reporting, package management, pagination, and reusable layout components.
+  

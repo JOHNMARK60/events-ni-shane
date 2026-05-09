@@ -66,7 +66,10 @@ $completed = $conn->query("SELECT COUNT(*) as total FROM events WHERE event_date
                         <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">Event Overview</p>
                         <h1 class="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Calendar</h1>
                     </div>
-                    <a href="add_event.php" class="rounded-2xl bg-gradient-to-r from-primary to-secondary px-5 py-3 text-center font-semibold text-white shadow-soft">+ Add Event</a>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <?php echo eventify_notification_widget($conn, 'admin'); ?>
+                        <a href="add_event.php" class="rounded-2xl bg-gradient-to-r from-primary to-secondary px-5 py-3 text-center font-semibold text-white shadow-soft">+ Add Event</a>
+                    </div>
                 </div>
 
                 <div class="mt-8 grid gap-6 xl:grid-cols-[1fr_360px]">

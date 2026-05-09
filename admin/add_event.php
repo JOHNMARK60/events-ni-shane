@@ -17,6 +17,9 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
 
     if(!empty($errors)) {
         eventify_set_flash('error', 'Event was not saved', $errors[0]);
+    } elseif(eventify_event_conflict_exists($conn, $payload['event_date'], $payload['event_time'], $payload['venue'])) {
+        $errors[] = "Another approved event already uses the same date, time, and venue.";
+        eventify_set_flash('error', 'Slot already booked', $errors[0]);
     } else {
         $budget = $payload['calculated_budget'];
 
@@ -97,7 +100,10 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
                         <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">Admin Scheduler</p>
                         <h1 class="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Add Event</h1>
                     </div>
-                    <a href="calendar.php" class="rounded-2xl border border-purple-100 bg-white px-5 py-3 font-semibold text-primary hover:bg-purple-50">View Calendar</a>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <?php echo eventify_notification_widget($conn, 'admin'); ?>
+                        <a href="calendar.php" class="rounded-2xl border border-purple-100 bg-white px-5 py-3 font-semibold text-primary hover:bg-purple-50">View Calendar</a>
+                    </div>
                 </div>
 
                 <?php if(!empty($errors)): ?>

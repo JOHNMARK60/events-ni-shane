@@ -24,6 +24,7 @@ $stmt->bind_param("ii", $id, $user_id);
 $stmt->execute();
 
 if($stmt->affected_rows > 0) {
+    eventify_prepare_email_notification('admin@eventify.com', 'Reservation cancelled', 'A client cancelled an Eventify reservation.');
     eventify_set_flash('success', 'Reservation cancelled', 'Your reservation was cancelled successfully.');
 } else {
     eventify_set_flash('error', 'Cancellation failed', 'Reservation was not found or cannot be cancelled.');

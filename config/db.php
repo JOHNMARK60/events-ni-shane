@@ -52,7 +52,8 @@ try {
             approved_at DATETIME DEFAULT NULL,
             rejected_at DATETIME DEFAULT NULL,
             cancelled_at DATETIME DEFAULT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
     ");
 
@@ -75,6 +76,18 @@ try {
         )
     ");
 
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NULL,
+            role ENUM('admin','client') NULL,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            is_read TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ");
+
     upgrade_eventify_schema($conn);
     seed_default_admin($conn);
 } catch (mysqli_sql_exception $error) {
@@ -86,6 +99,7 @@ function upgrade_eventify_schema($conn) {
     eventify_ensure_column($conn, 'reservations', 'approved_at', 'DATETIME DEFAULT NULL AFTER status');
     eventify_ensure_column($conn, 'reservations', 'rejected_at', 'DATETIME DEFAULT NULL AFTER approved_at');
     eventify_ensure_column($conn, 'reservations', 'cancelled_at', 'DATETIME DEFAULT NULL AFTER rejected_at');
+    eventify_ensure_column($conn, 'reservations', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at');
 
     eventify_ensure_column_index($conn, 'users', 'email', 'idx_users_email');
     eventify_ensure_column_index($conn, 'users', 'role', 'idx_users_role');
@@ -93,6 +107,9 @@ function upgrade_eventify_schema($conn) {
     eventify_ensure_column_index($conn, 'reservations', 'event_date', 'idx_reservations_event_date');
     eventify_ensure_column_index($conn, 'reservations', 'user_id', 'idx_reservations_user_id');
     eventify_ensure_column_index($conn, 'events', 'event_date', 'idx_events_event_date');
+    eventify_ensure_column_index($conn, 'notifications', 'user_id', 'idx_notifications_user_id');
+    eventify_ensure_column_index($conn, 'notifications', 'role', 'idx_notifications_role');
+    eventify_ensure_column_index($conn, 'notifications', 'is_read', 'idx_notifications_is_read');
 }
 
 function seed_default_admin($conn) {
